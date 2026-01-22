@@ -54,9 +54,11 @@ claude --version    # Should show Claude Code version
 # Create the project folder
 New-Item -ItemType Directory -Path "$env:USERPROFILE\Desktop\ado-ticket-quality" -Force
 
-# Create Claude Code config folder (if not exists)
-New-Item -ItemType Directory -Path "$env:USERPROFILE\Desktop\.claude" -Force
+# Create Claude Code config folder in user profile (if not exists)
+New-Item -ItemType Directory -Path "$env:USERPROFILE\.claude" -Force
 ```
+
+**Note:** The `.claude` folder must be in your user profile root (e.g., `C:\Users\YourName\.claude`), NOT on the Desktop.
 
 ### Step 2: Copy Files
 
@@ -70,26 +72,29 @@ Copy these files to the target PC:
 | `sync_cache.py` | `Desktop\ado-ticket-quality\` |
 | `run_assessment.py` | `Desktop\ado-ticket-quality\` |
 | `extract_and_assess.py` | `Desktop\ado-ticket-quality\` |
-| `mcp.json` | `Desktop\.claude\` |
+| `INSTALL_AND_USAGE.md` | `Desktop\ado-ticket-quality\` |
+
+**Note:** `mcp.json` must be CREATED manually (see Step 3) - it is not included in the source files.
 
 **File structure:**
 ```
-Desktop\
-├── ado-ticket-quality\
-│   ├── config.py              # Configuration (ADO queries, fields)
-│   ├── check_cache.py         # Cache status checker
-│   ├── save_to_cache.py       # Save MCP results to cache
-│   ├── sync_cache.py          # Sync cache with ADO queries
-│   ├── run_assessment.py      # Full workflow orchestrator
-│   ├── extract_and_assess.py  # Quality assessment
-│   └── ado_workitems_cache.json  # Local cache (created on first run)
+C:\Users\YourName\
+├── Desktop\
+│   └── ado-ticket-quality\
+│       ├── config.py              # Configuration (ADO queries, fields)
+│       ├── check_cache.py         # Cache status checker
+│       ├── save_to_cache.py       # Save MCP results to cache
+│       ├── sync_cache.py          # Sync cache with ADO queries
+│       ├── run_assessment.py      # Full workflow orchestrator
+│       ├── extract_and_assess.py  # Quality assessment
+│       └── ado_workitems_cache.json  # Local cache (created on first run)
 └── .claude\
-    └── mcp.json               # MCP server configuration
+    └── mcp.json                   # MCP server configuration (YOU CREATE THIS)
 ```
 
 ### Step 3: Configure ADO MCP Server
 
-Edit `Desktop\.claude\mcp.json`:
+Create a new file at `C:\Users\YourName\.claude\mcp.json` with the following content:
 
 ```json
 {
@@ -104,22 +109,44 @@ Edit `Desktop\.claude\mcp.json`:
 
 **To change organization**: Replace `opusinspection` with your Azure DevOps organization name.
 
+**How it works:**
+- The MCP (Model Context Protocol) server allows Claude Code to communicate with Azure DevOps
+- `@azure-devops/mcp` is the ADO MCP server package (installed automatically via npx)
+- `@anthropic-ai/claude-code-mcp-adapter` bridges Claude Code with the MCP server
+- The last argument (`opusinspection`) is your ADO organization name
+
 ### Step 4: Configure Azure DevOps Authentication
+
+The ADO MCP server uses Azure CLI for authentication.
 
 ```powershell
 # Install Azure CLI if not present
 winget install Microsoft.AzureCLI
 
-# Login to Azure (use your Opus account)
+# Login to Azure (use your corporate account)
 az login
 
-# Set default organization (optional)
+# Verify you're logged in
+az account show
+
+# Set default organization (optional but recommended)
 az devops configure --defaults organization=https://dev.azure.com/opusinspection
 ```
+
+**Note:** You must have access to the Azure DevOps organization. If you get "Unauthorized" errors, contact your ADO administrator.
 
 ### Step 5: Restart Claude Code
 
 Close and reopen Claude Code for the MCP configuration to take effect.
+
+### Step 6: Verify MCP Connection
+
+In Claude Code, test the connection by asking:
+```
+List the projects in Azure DevOps
+```
+
+If configured correctly, Claude will use the `mcp__ado__core_list_projects` tool and return your ADO projects.
 
 ---
 
@@ -326,13 +353,19 @@ Tickets with Start Date > 7 days from today are prefixed with "Prelim:" to indic
 
 ### MCP Server Not Working
 
-**Symptom:** MCP tools not available in Claude Code
+**Symptom:** MCP tools not available in Claude Code, or "tool not found" errors
 
 **Solutions:**
-1. Verify `mcp.json` exists in `Desktop\.claude\`
-2. Restart Claude Code after adding MCP config
-3. Check Node.js is installed: `node --version`
-4. Test MCP manually: `npx -y @azure-devops/mcp opusinspection`
+1. Verify `mcp.json` exists in `C:\Users\YourName\.claude\` (NOT Desktop\.claude)
+2. Check the JSON syntax is valid (no trailing commas, proper quotes)
+3. Restart Claude Code after adding/modifying MCP config
+4. Check Node.js is installed: `node --version` (requires v18+)
+5. Test MCP manually in terminal:
+   ```powershell
+   npx -y @azure-devops/mcp opusinspection
+   ```
+   This should start without errors (press Ctrl+C to exit)
+6. Check Azure CLI is logged in: `az account show`
 
 ### Azure Authentication Failed
 
@@ -360,14 +393,11 @@ fields: ["System.Id", "System.WorkItemType", "System.Title", "System.Description
 
 ### Windows Encoding Errors
 
-**Symptom:** UnicodeEncodeError with emoji characters
+**Symptom:** UnicodeEncodeError with special characters
 
-**Cause:** Windows console uses cp1252 encoding
+**Cause:** Windows console uses cp1252 encoding which doesn't support all Unicode characters
 
-**Solution:** The important data prints before the error. Alternatively, redirect output to a file:
-```powershell
-python check_cache.py > cache_status.txt
-```
+**Solution:** As of v2.2, all scripts use ASCII-compatible characters. If you encounter encoding errors with older versions, update to the latest version from GitHub.
 
 ### Many Tickets Have F Grades
 
@@ -484,9 +514,10 @@ Local cache file containing:
 - [ ] `sync_cache.py` copied to `Desktop\ado-ticket-quality\`
 - [ ] `run_assessment.py` copied to `Desktop\ado-ticket-quality\`
 - [ ] `extract_and_assess.py` copied to `Desktop\ado-ticket-quality\`
-- [ ] `mcp.json` copied to `Desktop\.claude\`
-- [ ] Azure CLI logged in (`az login`)
-- [ ] Claude Code restarted
+- [ ] `mcp.json` CREATED at `C:\Users\YourName\.claude\mcp.json`
+- [ ] Azure CLI installed and logged in (`az login`)
+- [ ] Claude Code restarted after MCP config
+- [ ] MCP connection verified (test with "List ADO projects")
 - [ ] Cache populated (via MCP fetch + save_to_cache.py)
 
 ---
@@ -509,3 +540,6 @@ Local cache file containing:
 |     |            | - Dynamic query GUIDs instead of hardcoded IDs |
 |     |            | - Smart field merging: keeps non-empty/more complete values |
 |     |            | - Fixed metadata fields (CreatedBy, dates) now properly merged |
+| 2.2 | 2026-01-22 | Windows compatibility fix |
+|     |            | - Replaced emoji characters with ASCII equivalents |
+|     |            | - Scripts now run cleanly on Windows console |

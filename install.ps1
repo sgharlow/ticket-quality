@@ -1,7 +1,7 @@
 # ADO Ticket Quality Assessment - Installation Script
 # Run this script on a new PC to set up the solution
 #
-# Version 2.1 - Self-Updating Workflow
+# Version 2.2 - Windows Compatibility
 #
 # Usage:
 #   .\install.ps1
@@ -17,14 +17,14 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "ADO Ticket Quality Assessment Installer" -ForegroundColor Cyan
-Write-Host "Version 2.1 - Self-Updating Workflow" -ForegroundColor Cyan
+Write-Host "Version 2.2 - Windows Compatibility" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Define paths
 $DesktopPath = "C:\Users\$TargetUser\Desktop"
 $ProjectPath = "$DesktopPath\ado-ticket-quality"
-$ClaudePath = "$DesktopPath\.claude"
+$ClaudePath = "C:\Users\$TargetUser\.claude"  # Must be in user profile root, NOT Desktop
 
 # Step 1: Check prerequisites
 Write-Host "[1/5] Checking prerequisites..." -ForegroundColor Yellow
@@ -72,9 +72,10 @@ $filesToCopy = @(
     @{ Name = "sync_cache.py"; Dest = $ProjectPath },
     @{ Name = "run_assessment.py"; Dest = $ProjectPath },
     @{ Name = "extract_and_assess.py"; Dest = $ProjectPath },
-    @{ Name = "INSTALL_AND_USAGE.md"; Dest = $ProjectPath },
-    @{ Name = "mcp.json"; Dest = $ClaudePath }
+    @{ Name = "INSTALL_AND_USAGE.md"; Dest = $ProjectPath }
 )
+
+# Note: mcp.json must be created manually - see documentation
 
 if ($SourcePath -and (Test-Path $SourcePath)) {
     foreach ($file in $filesToCopy) {
@@ -117,29 +118,32 @@ Write-Host ""
 Write-Host "[5/5] Installation Summary" -ForegroundColor Yellow
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Required files:" -ForegroundColor White
-Write-Host "  $ProjectPath\config.py              - Central configuration"
-Write-Host "  $ProjectPath\check_cache.py         - Cache status checker"
-Write-Host "  $ProjectPath\save_to_cache.py       - Save MCP results to cache"
-Write-Host "  $ProjectPath\sync_cache.py          - Sync cache with ADO queries"
-Write-Host "  $ProjectPath\run_assessment.py      - Workflow orchestrator"
-Write-Host "  $ProjectPath\extract_and_assess.py  - Quality assessment"
-Write-Host "  $ClaudePath\mcp.json                - MCP server config"
+Write-Host "Project files installed to:" -ForegroundColor White
+Write-Host "  $ProjectPath\" -ForegroundColor Green
 Write-Host ""
-Write-Host "Optional files:" -ForegroundColor White
-Write-Host "  $ProjectPath\INSTALL_AND_USAGE.md   - Documentation"
-Write-Host "  $ProjectPath\ado_workitems_cache.json - Local cache (copy if available)"
+Write-Host "MCP Configuration (YOU MUST CREATE THIS):" -ForegroundColor Yellow
+Write-Host "  File: $ClaudePath\mcp.json" -ForegroundColor White
+Write-Host ""
+Write-Host "  Create this file with the following content:" -ForegroundColor White
+Write-Host '  {' -ForegroundColor Cyan
+Write-Host '    "mcpServers": {' -ForegroundColor Cyan
+Write-Host '      "ado": {' -ForegroundColor Cyan
+Write-Host '        "command": "npx",' -ForegroundColor Cyan
+Write-Host '        "args": ["-y", "@anthropic-ai/claude-code-mcp-adapter", "npx", "-y", "@azure-devops/mcp", "opusinspection"]' -ForegroundColor Cyan
+Write-Host '      }' -ForegroundColor Cyan
+Write-Host '    }' -ForegroundColor Cyan
+Write-Host '  }' -ForegroundColor Cyan
+Write-Host ""
+Write-Host "  Replace 'opusinspection' with your ADO organization name." -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor White
-Write-Host "  1. Restart Claude Code (close and reopen)"
+Write-Host "  1. CREATE mcp.json file as shown above"
 Write-Host "  2. Run: az login (if not already logged in)"
-Write-Host "  3. Check cache: python check_cache.py"
-Write-Host "  4. If cache is empty/incomplete, fetch via Claude Code MCP"
-Write-Host "  5. Run assessment: python extract_and_assess.py"
-Write-Host ""
-Write-Host "Quick test (if cache exists):" -ForegroundColor Cyan
-Write-Host "  cd $ProjectPath"
-Write-Host "  python extract_and_assess.py"
+Write-Host "  3. Restart Claude Code (close and reopen)"
+Write-Host "  4. Verify MCP: Ask Claude 'List ADO projects'"
+Write-Host "  5. Check cache: python check_cache.py"
+Write-Host "  6. Fetch data via Claude Code MCP"
+Write-Host "  7. Run assessment: python extract_and_assess.py"
 Write-Host ""
 Write-Host "Documentation: $ProjectPath\INSTALL_AND_USAGE.md" -ForegroundColor Cyan
 Write-Host ""
