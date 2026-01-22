@@ -39,7 +39,7 @@ def main():
 
     # Load cache
     if not os.path.exists(CACHE_FILE):
-        print(f"\n❌ Cache file not found: {CACHE_FILE}")
+        print(f"\n[X] Cache file not found: {CACHE_FILE}")
         print("\nTo populate cache, use Claude Code with MCP to fetch work items.")
         print(f"Project: A TDC Master Project")
         print(f"Required fields: {REQUIRED_FIELDS}")
@@ -87,13 +87,13 @@ def main():
     # Summary
     print("\n" + "=" * 70)
     if not missing_ids and not incomplete_items:
-        print("✅ CACHE IS COMPLETE - Ready for quality assessment!")
+        print("[OK] CACHE IS COMPLETE - Ready for quality assessment!")
         print("   Run: python extract_and_assess.py")
     else:
-        print("⚠️  CACHE NEEDS UPDATES")
+        print("[!] CACHE NEEDS UPDATES")
 
         if missing_ids:
-            print(f"\n📋 MISSING IDs - Need to fetch {len(missing_ids)} items via MCP:")
+            print(f"\n[*] MISSING IDs - Need to fetch {len(missing_ids)} items via MCP:")
             print("-" * 50)
             for i in range(0, len(missing_ids), 50):
                 batch = missing_ids[i:i+50]
@@ -110,7 +110,7 @@ def main():
             print(f"  fields: {REQUIRED_FIELDS}")
 
         if incomplete_items:
-            print(f"\n📋 INCOMPLETE ITEMS - {len(incomplete_items)} items missing Description/AC:")
+            print(f"\n[*] INCOMPLETE ITEMS - {len(incomplete_items)} items missing Description/AC:")
             print(f"   IDs: {incomplete_items[:20]}{'...' if len(incomplete_items) > 20 else ''}")
             print("   These need to be re-fetched with full fields.")
 
