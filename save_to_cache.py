@@ -34,7 +34,7 @@ def save_cache(cache):
     print(f"File: {CACHE_FILE}")
 
 def add_items_to_cache(new_items, cache):
-    """Add or update items in cache."""
+    """Add or update items in cache, merging fields for completeness."""
     # Index existing items by ID
     existing = {}
     for item in cache.get('work_items', []):
@@ -51,18 +51,24 @@ def add_items_to_cache(new_items, cache):
             continue
 
         if item_id in existing:
-            # Check if new item has more complete data
+            # Merge fields: keep the more complete data for each field
             old_fields = existing[item_id].get('fields', {})
             new_fields = item.get('fields', {})
 
-            old_desc = old_fields.get('System.Description', '')
-            new_desc = new_fields.get('System.Description', '')
-            old_ac = old_fields.get('Microsoft.VSTS.Common.AcceptanceCriteria', '')
-            new_ac = new_fields.get('Microsoft.VSTS.Common.AcceptanceCriteria', '')
+            merged_fields = dict(old_fields)  # Start with old fields
 
-            # Update if new item has more content
-            if (len(str(new_desc)) > len(str(old_desc))) or (len(str(new_ac)) > len(str(old_ac))):
-                existing[item_id] = item
+            # For each new field, use it if old is missing/empty or new is longer
+            for key, new_value in new_fields.items():
+                old_value = merged_fields.get(key)
+                # Use new value if old is missing, empty, or new is more substantial
+                if old_value is None or old_value == '':
+                    merged_fields[key] = new_value
+                elif new_value and len(str(new_value)) > len(str(old_value)):
+                    merged_fields[key] = new_value
+
+            # Check if anything actually changed
+            if merged_fields != old_fields:
+                existing[item_id]['fields'] = merged_fields
                 updated += 1
         else:
             existing[item_id] = item

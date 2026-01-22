@@ -15,10 +15,12 @@ This solution provides batch quality assessment for Azure DevOps work items (Fea
 
 | Component | Purpose |
 |-----------|---------|
-| `config.py` | Central configuration - IDs, fields, paths |
+| `config.py` | Central configuration - ADO queries, fields, paths |
 | `check_cache.py` | Shows cache status and identifies gaps |
-| `save_to_cache.py` | Saves MCP fetch results to local cache |
+| `save_to_cache.py` | Saves MCP fetch results to local cache (smart field merging) |
 | `extract_and_assess.py` | Runs quality assessment from local cache |
+| `sync_cache.py` | Syncs cache with current ADO query results |
+| `run_assessment.py` | Orchestrates full workflow with auto-sync detection |
 
 ---
 
@@ -65,6 +67,8 @@ Copy these files to the target PC:
 | `config.py` | `Desktop\ado-ticket-quality\` |
 | `check_cache.py` | `Desktop\ado-ticket-quality\` |
 | `save_to_cache.py` | `Desktop\ado-ticket-quality\` |
+| `sync_cache.py` | `Desktop\ado-ticket-quality\` |
+| `run_assessment.py` | `Desktop\ado-ticket-quality\` |
 | `extract_and_assess.py` | `Desktop\ado-ticket-quality\` |
 | `mcp.json` | `Desktop\.claude\` |
 
@@ -72,9 +76,11 @@ Copy these files to the target PC:
 ```
 Desktop\
 ├── ado-ticket-quality\
-│   ├── config.py              # Configuration
+│   ├── config.py              # Configuration (ADO queries, fields)
 │   ├── check_cache.py         # Cache status checker
 │   ├── save_to_cache.py       # Save MCP results to cache
+│   ├── sync_cache.py          # Sync cache with ADO queries
+│   ├── run_assessment.py      # Full workflow orchestrator
 │   ├── extract_and_assess.py  # Quality assessment
 │   └── ado_workitems_cache.json  # Local cache (created on first run)
 └── .claude\
@@ -129,6 +135,27 @@ python extract_and_assess.py
 ```
 
 This runs the assessment entirely from local cache - no MCP calls needed.
+
+### Self-Updating Workflow (Recommended)
+
+Use the orchestrator script for automatic sync detection:
+
+```powershell
+cd Desktop\ado-ticket-quality
+python run_assessment.py
+```
+
+This will:
+1. Check if cache is in sync with ADO queries
+2. Report any missing or extra items
+3. Run the quality assessment
+
+If sync is needed, use:
+```powershell
+python run_assessment.py --sync
+```
+
+This outputs MCP commands to fetch missing items.
 
 ### Full Workflow
 
@@ -185,22 +212,42 @@ Outputs:
 
 ## Updating Expected Work Item IDs
 
-When query results change (new sprint, different query), update `config.py`:
+The system uses ADO query GUIDs defined in `config.py` to dynamically determine expected work items:
 
 ```python
-EXPECTED_IDS = [
-    # Features from query GUID
-    12345, 12346, 12347, ...
-    # User Stories from query GUID
-    23456, 23457, ...
-]
+ADO_QUERIES = {
+    "Q1 2026 Committed Features": "973996cc-b2c6-49fe-935b-f043f474f4cd",
+    "Q1 2026 Committed User Stories": "1e9d9cc6-ffee-4ed3-a8d1-b8881451b294"
+}
 ```
 
-Then:
-1. Run `python check_cache.py` to see what's missing
-2. Fetch missing items via MCP
-3. Save to cache with `python save_to_cache.py`
-4. Run assessment with `python extract_and_assess.py`
+### Syncing with Current Query Results
+
+When query results change (new items added, items removed):
+
+1. Run query sync via Claude Code:
+   ```
+   Run the ADO queries and sync the cache with current results
+   ```
+
+2. Or manually with sync_cache.py:
+   ```powershell
+   # After getting query results as JSON
+   python sync_cache.py --check query_results.json
+   ```
+
+3. Fetch any missing items, then run assessment:
+   ```powershell
+   python run_assessment.py
+   ```
+
+### Changing Queries
+
+To assess different queries, update `config.py` with new query GUIDs:
+
+1. Find the query GUID in ADO (query URL contains the GUID)
+2. Update `ADO_QUERIES` dictionary
+3. Run `python sync_cache.py --check` with new query results
 
 ---
 
@@ -352,7 +399,7 @@ The local caching approach was designed to solve these problems:
 ### config.py
 
 Central configuration file containing:
-- `EXPECTED_IDS` - List of all work item IDs to assess
+- `ADO_QUERIES` - Dictionary of query names to GUIDs (dynamic ID lookup)
 - `REQUIRED_FIELDS` - Fields that must be fetched from ADO
 - `ADO_PROJECT` - Project name ("A TDC Master Project")
 - `CACHE_FILE` - Path to local cache JSON file
@@ -372,9 +419,32 @@ Shows:
 Usage: `python save_to_cache.py [json_file]`
 
 - Reads JSON from file or stdin
-- Merges with existing cache
-- Updates items if new data is more complete
+- Merges with existing cache using smart field merging
+- For each field: keeps the non-empty or more complete value
 - Reports added/updated counts
+
+### sync_cache.py
+
+Usage: `python sync_cache.py [options]`
+
+Options:
+- `--check <file>` - Check query results JSON against cache
+- `--clean <file>` - Remove items not in query results
+
+Syncs the local cache with current ADO query results.
+
+### run_assessment.py
+
+Usage: `python run_assessment.py [options]`
+
+Options:
+- `--sync` - Output MCP commands for syncing if needed
+- `--query-ids <file>` - Provide query IDs JSON file
+
+Orchestrates the full workflow:
+1. Checks cache vs expected IDs
+2. Reports sync status
+3. Runs quality assessment
 
 ### extract_and_assess.py
 
@@ -411,6 +481,8 @@ Local cache file containing:
 - [ ] `config.py` copied to `Desktop\ado-ticket-quality\`
 - [ ] `check_cache.py` copied to `Desktop\ado-ticket-quality\`
 - [ ] `save_to_cache.py` copied to `Desktop\ado-ticket-quality\`
+- [ ] `sync_cache.py` copied to `Desktop\ado-ticket-quality\`
+- [ ] `run_assessment.py` copied to `Desktop\ado-ticket-quality\`
 - [ ] `extract_and_assess.py` copied to `Desktop\ado-ticket-quality\`
 - [ ] `mcp.json` copied to `Desktop\.claude\`
 - [ ] Azure CLI logged in (`az login`)
@@ -431,3 +503,9 @@ Local cache file containing:
 |     |            | - Added extract_and_assess.py for offline assessment |
 |     |            | - Eliminates data loss during context compaction |
 |     |            | - Explicit fields parameter ensures complete data |
+| 2.1 | 2026-01-22 | Self-updating workflow and field merging improvements |
+|     |            | - Added sync_cache.py for ADO query synchronization |
+|     |            | - Added run_assessment.py for workflow orchestration |
+|     |            | - Dynamic query GUIDs instead of hardcoded IDs |
+|     |            | - Smart field merging: keeps non-empty/more complete values |
+|     |            | - Fixed metadata fields (CreatedBy, dates) now properly merged |

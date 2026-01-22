@@ -1,7 +1,7 @@
 # ADO Ticket Quality Assessment - Installation Script
 # Run this script on a new PC to set up the solution
 #
-# Version 2.0 - Local Caching Strategy
+# Version 2.1 - Self-Updating Workflow
 #
 # Usage:
 #   .\install.ps1
@@ -17,7 +17,7 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "ADO Ticket Quality Assessment Installer" -ForegroundColor Cyan
-Write-Host "Version 2.0 - Local Caching Strategy" -ForegroundColor Cyan
+Write-Host "Version 2.1 - Self-Updating Workflow" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -69,6 +69,8 @@ $filesToCopy = @(
     @{ Name = "config.py"; Dest = $ProjectPath },
     @{ Name = "check_cache.py"; Dest = $ProjectPath },
     @{ Name = "save_to_cache.py"; Dest = $ProjectPath },
+    @{ Name = "sync_cache.py"; Dest = $ProjectPath },
+    @{ Name = "run_assessment.py"; Dest = $ProjectPath },
     @{ Name = "extract_and_assess.py"; Dest = $ProjectPath },
     @{ Name = "INSTALL_AND_USAGE.md"; Dest = $ProjectPath },
     @{ Name = "mcp.json"; Dest = $ClaudePath }
@@ -119,6 +121,8 @@ Write-Host "Required files:" -ForegroundColor White
 Write-Host "  $ProjectPath\config.py              - Central configuration"
 Write-Host "  $ProjectPath\check_cache.py         - Cache status checker"
 Write-Host "  $ProjectPath\save_to_cache.py       - Save MCP results to cache"
+Write-Host "  $ProjectPath\sync_cache.py          - Sync cache with ADO queries"
+Write-Host "  $ProjectPath\run_assessment.py      - Workflow orchestrator"
 Write-Host "  $ProjectPath\extract_and_assess.py  - Quality assessment"
 Write-Host "  $ClaudePath\mcp.json                - MCP server config"
 Write-Host ""
