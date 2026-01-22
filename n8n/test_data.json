@@ -1,0 +1,164 @@
+{
+  "_comment": "Test data for validating the n8n ADO Ticket Quality workflow",
+  "_usage": "Import this into a Code node to test the assessment logic without ADO connection",
+
+  "workItems": [
+    {
+      "id": 99901,
+      "fields": {
+        "System.Id": 99901,
+        "System.WorkItemType": "Feature",
+        "System.Title": "Well-documented feature with complete information",
+        "System.Description": "<div>This feature implements a comprehensive user authentication system including:<br><ul><li>Multi-factor authentication support</li><li>OAuth2 integration with major providers</li><li>Session management with configurable timeouts</li><li>Audit logging for all authentication events</li></ul><br>The system will integrate with our existing user management module and provide APIs for third-party integrations.</div>",
+        "Microsoft.VSTS.Common.AcceptanceCriteria": "<div><ul><li>Users can enable MFA from account settings</li><li>System supports Google, Microsoft, and GitHub OAuth providers</li><li>Sessions expire after configurable timeout (default 30 minutes)</li><li>All login attempts are logged with timestamp, IP, and outcome</li><li>API documentation is complete and published</li><li>Unit test coverage exceeds 80%</li></ul></div>",
+        "System.CreatedBy": {
+          "displayName": "John Developer",
+          "uniqueName": "john.developer@company.com"
+        },
+        "System.State": "Active",
+        "System.AreaPath": "Project\\Authentication",
+        "Microsoft.VSTS.Scheduling.StartDate": "2026-01-15T00:00:00Z",
+        "Microsoft.VSTS.Scheduling.TargetDate": "2026-03-15T00:00:00Z"
+      }
+    },
+    {
+      "id": 99902,
+      "fields": {
+        "System.Id": 99902,
+        "System.WorkItemType": "User Story",
+        "System.Title": "Moderate quality user story",
+        "System.Description": "<div>As a user, I want to reset my password so that I can regain access to my account if I forget my credentials.</div>",
+        "Microsoft.VSTS.Common.AcceptanceCriteria": "<div><ul><li>User can request password reset via email</li><li>Reset link expires after 24 hours</li><li>User receives confirmation after successful reset</li></ul></div>",
+        "System.CreatedBy": {
+          "displayName": "Jane Analyst",
+          "uniqueName": "jane.analyst@company.com"
+        },
+        "System.State": "Active",
+        "System.AreaPath": "Project\\Authentication",
+        "Microsoft.VSTS.Scheduling.StartDate": "2026-02-01T00:00:00Z",
+        "Microsoft.VSTS.Scheduling.TargetDate": "2026-02-15T00:00:00Z"
+      }
+    },
+    {
+      "id": 99903,
+      "fields": {
+        "System.Id": 99903,
+        "System.WorkItemType": "Feature",
+        "System.Title": "Missing description - poor quality",
+        "System.Description": "",
+        "Microsoft.VSTS.Common.AcceptanceCriteria": "<div><ul><li>It works</li><li>No bugs</li></ul></div>",
+        "System.CreatedBy": {
+          "displayName": "Quick Writer",
+          "uniqueName": "quick.writer@company.com"
+        },
+        "System.State": "New",
+        "System.AreaPath": "Project\\Features",
+        "Microsoft.VSTS.Scheduling.StartDate": null,
+        "Microsoft.VSTS.Scheduling.TargetDate": null
+      }
+    },
+    {
+      "id": 99904,
+      "fields": {
+        "System.Id": 99904,
+        "System.WorkItemType": "User Story",
+        "System.Title": "Missing acceptance criteria",
+        "System.Description": "<div>This user story has a reasonable description explaining what needs to be built and why it matters to the user. It includes context about the business need and technical approach.</div>",
+        "Microsoft.VSTS.Common.AcceptanceCriteria": "",
+        "System.CreatedBy": {
+          "displayName": "Partial Writer",
+          "uniqueName": "partial.writer@company.com"
+        },
+        "System.State": "Active",
+        "System.AreaPath": "Project\\Features",
+        "Microsoft.VSTS.Scheduling.StartDate": "2026-01-20T00:00:00Z",
+        "Microsoft.VSTS.Scheduling.TargetDate": "2026-02-28T00:00:00Z"
+      }
+    },
+    {
+      "id": 99905,
+      "fields": {
+        "System.Id": 99905,
+        "System.WorkItemType": "Feature",
+        "System.Title": "Both missing - worst case",
+        "System.Description": null,
+        "Microsoft.VSTS.Common.AcceptanceCriteria": null,
+        "System.CreatedBy": {
+          "displayName": "Minimal Writer",
+          "uniqueName": "minimal.writer@company.com"
+        },
+        "System.State": "New",
+        "System.AreaPath": "Project\\Backlog",
+        "Microsoft.VSTS.Scheduling.StartDate": null,
+        "Microsoft.VSTS.Scheduling.TargetDate": null
+      }
+    },
+    {
+      "id": 99906,
+      "fields": {
+        "System.Id": 99906,
+        "System.WorkItemType": "User Story",
+        "System.Title": "B",
+        "System.Description": "<div>Short</div>",
+        "Microsoft.VSTS.Common.AcceptanceCriteria": "<div>Done when done</div>",
+        "System.CreatedBy": {
+          "displayName": "Terse Writer",
+          "uniqueName": "terse.writer@company.com"
+        },
+        "System.State": "Active",
+        "System.AreaPath": "Project\\Sprint",
+        "Microsoft.VSTS.Scheduling.StartDate": "2026-01-01T00:00:00Z",
+        "Microsoft.VSTS.Scheduling.TargetDate": "2026-01-31T00:00:00Z"
+      }
+    }
+  ],
+
+  "expectedResults": {
+    "99901": {
+      "grade": "A",
+      "scoreRange": "75-100",
+      "notes": "Complete documentation with rich description and detailed acceptance criteria"
+    },
+    "99902": {
+      "grade": "B",
+      "scoreRange": "55-74",
+      "notes": "Good user story format but could use more detail"
+    },
+    "99903": {
+      "grade": "F",
+      "scoreRange": "0-19",
+      "notes": "Missing description caps at D, minimal AC content"
+    },
+    "99904": {
+      "grade": "F",
+      "scoreRange": "0-19",
+      "notes": "Missing acceptance criteria caps at D"
+    },
+    "99905": {
+      "grade": "F",
+      "scoreRange": "0-19",
+      "notes": "Both missing - worst possible score"
+    },
+    "99906": {
+      "grade": "F",
+      "scoreRange": "0-19",
+      "notes": "Extremely short content in all fields"
+    }
+  },
+
+  "testQueries": {
+    "mockQueryResponse": {
+      "queryType": "flat",
+      "queryResultType": "workItem",
+      "asOf": "2026-01-22T12:00:00Z",
+      "workItems": [
+        {"id": 99901, "url": "https://dev.azure.com/test/_apis/wit/workItems/99901"},
+        {"id": 99902, "url": "https://dev.azure.com/test/_apis/wit/workItems/99902"},
+        {"id": 99903, "url": "https://dev.azure.com/test/_apis/wit/workItems/99903"},
+        {"id": 99904, "url": "https://dev.azure.com/test/_apis/wit/workItems/99904"},
+        {"id": 99905, "url": "https://dev.azure.com/test/_apis/wit/workItems/99905"},
+        {"id": 99906, "url": "https://dev.azure.com/test/_apis/wit/workItems/99906"}
+      ]
+    }
+  }
+}
