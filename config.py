@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 """
 Central configuration for ADO ticket quality assessment.
-All IDs and paths defined once here.
+Query GUIDs and paths defined here - IDs are fetched dynamically from ADO.
 """
 
-# All 396 expected work item IDs from Q1 2026 queries
+# ADO Query GUIDs - these queries define which tickets to assess
+# Update these GUIDs to change which tickets are included
+ADO_QUERIES = {
+    "Q1 2026 Committed Features": "973996cc-b2c6-49fe-935b-f043f474f4cd",
+    "Q1 2026 Committed User Stories": "1e9d9cc6-ffee-4ed3-a8d1-b8881451b294"
+}
+
+# Legacy: Static list of expected IDs (used as fallback if queries fail)
+# This list was captured on 2026-01-21
 EXPECTED_IDS = [
-    # Features (377) from query 973996cc-b2c6-49fe-935b-f043f474f4cd
     54320, 55904, 55928, 55964, 56437, 56438, 56439, 56867, 56973, 57358, 57368, 57409, 57413, 57424,
     57613, 57710, 57735, 57750, 57824, 57947, 58382, 58402, 59513, 59514, 60291, 60738, 60744, 61797,
     61800, 61828, 61829, 61830, 61831, 61832, 61835, 61937, 61963, 62027, 62028, 62029, 62030, 62038,
@@ -34,7 +41,6 @@ EXPECTED_IDS = [
     64776, 64777, 64859, 64880, 64881, 64889, 64893, 64918, 64927, 64928, 64943, 64944, 64946, 64948,
     64949, 64950, 64952, 64953, 64954, 64955, 64957, 64960, 64961, 64966, 64968, 64972, 64973, 64974,
     64975, 64977, 64979, 64980, 64981, 64982, 64983, 65008, 65015, 65037, 65038, 65040, 65058,
-    # User Stories (19) from query 1e9d9cc6-ffee-4ed3-a8d1-b8881451b294
     46958, 56317, 58496, 60141, 60178, 62087, 62143, 62144, 62145, 62510, 62865, 63016, 63803, 64873,
     65004, 65033, 65039, 65041, 65042
 ]

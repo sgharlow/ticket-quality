@@ -4,8 +4,8 @@ Extract ADO ticket data from local cache and run quality assessment.
 This script operates ENTIRELY on local cached data - NO MCP calls needed.
 
 Prerequisites:
-1. Run check_cache.py to verify cache completeness
-2. If incomplete, fetch missing items via MCP and save to cache
+1. Run sync_cache.py --check to sync with ADO queries
+2. If items need fetching, use Claude Code MCP to fetch them
 3. Then run this script
 
 Usage: python extract_and_assess.py
@@ -18,6 +18,14 @@ from datetime import datetime, timedelta
 from config import CACHE_FILE, EXPECTED_IDS
 
 OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def get_expected_ids(cache):
+    """Get expected IDs from cache metadata, fall back to config if not available."""
+    metadata = cache.get('metadata', {})
+    if 'expected_ids' in metadata:
+        return set(metadata['expected_ids'])
+    # Fall back to hardcoded list
+    return set(EXPECTED_IDS)
 
 def strip_html(text):
     """Remove HTML tags from text."""
@@ -244,8 +252,13 @@ def main():
     print(f"  Last updated: {metadata.get('last_updated', 'Unknown')}")
     print(f"  Total items in cache: {len(items)}")
 
+    # Get expected IDs (from cache metadata or fallback to config)
+    expected_set = get_expected_ids(cache)
+    source = "cache metadata" if 'expected_ids' in metadata else "config.py (static)"
+    print(f"  Expected IDs source: {source}")
+    print(f"  Expected IDs count: {len(expected_set)}")
+
     # Filter to expected IDs only
-    expected_set = set(EXPECTED_IDS)
     items = [item for item in items if (item.get('id') or item.get('fields', {}).get('System.Id')) in expected_set]
     print(f"  Items matching expected IDs: {len(items)}")
 
