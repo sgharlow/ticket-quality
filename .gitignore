@@ -1,0 +1,15 @@
+# Cache file (contains fetched ADO data)
+ado_workitems_cache.json
+
+# Generated reports
+*.csv
+*.xlsx
+*_summary_*.txt
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Temp files
+*_temp.json
+batch_*.json
