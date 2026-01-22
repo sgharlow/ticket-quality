@@ -8,9 +8,9 @@
       "fields": {
         "System.Id": 99901,
         "System.WorkItemType": "Feature",
-        "System.Title": "Well-documented feature with complete information",
-        "System.Description": "<div>This feature implements a comprehensive user authentication system including:<br><ul><li>Multi-factor authentication support</li><li>OAuth2 integration with major providers</li><li>Session management with configurable timeouts</li><li>Audit logging for all authentication events</li></ul><br>The system will integrate with our existing user management module and provide APIs for third-party integrations.</div>",
-        "Microsoft.VSTS.Common.AcceptanceCriteria": "<div><ul><li>Users can enable MFA from account settings</li><li>System supports Google, Microsoft, and GitHub OAuth providers</li><li>Sessions expire after configurable timeout (default 30 minutes)</li><li>All login attempts are logged with timestamp, IP, and outcome</li><li>API documentation is complete and published</li><li>Unit test coverage exceeds 80%</li></ul></div>",
+        "System.Title": "Implement comprehensive user authentication system with MFA support",
+        "System.Description": "<div>As an administrator, I want to provide users with a secure multi-factor authentication system so that our application meets enterprise security compliance requirements.<br><br>This feature shall implement a comprehensive user authentication system including:<br><ul><li>Multi-factor authentication support using TOTP and SMS verification</li><li>OAuth2 integration with major providers (Google, Microsoft, GitHub)</li><li>Session management with configurable timeout settings and automatic logout</li><li>Audit logging for all authentication events with detailed timestamps</li></ul><br>The system will integrate with our existing user management module and provide REST APIs for third-party integrations. When users navigate to the login page, they must be able to select their preferred authentication method. If MFA is enabled, the user will be prompted for a verification code after entering their password. The system should validate the code and either allow access or display an appropriate error message.<br><br>Implementation should use the existing database tables for user storage and add new tables for MFA configuration and audit logs. The API endpoints must support both JSON and form-data formats for backwards compatibility.</div>",
+        "Microsoft.VSTS.Common.AcceptanceCriteria": "<div><ul><li>Given a user with MFA enabled, when they login successfully, then they must be prompted for a verification code</li><li>Given a valid verification code, when submitted within 30 seconds, then the user is authenticated</li><li>Given an invalid verification code, when submitted, then an error is displayed and the user can retry up to 3 times</li><li>Verify that users can enable MFA from account settings</li><li>Confirm that system supports Google, Microsoft, and GitHub OAuth providers</li><li>Test that sessions expire after the configurable timeout (default 30 minutes)</li><li>Ensure all login attempts are logged with timestamp, IP address, and outcome</li><li>Check that API documentation is complete and published to developer portal</li><li>Validate that unit test coverage exceeds 80% for all new modules</li><li>Verify error handling for network failures during OAuth flow</li><li>Test boundary conditions: maximum session length, minimum password length, rate limiting</li></ul></div>",
         "System.CreatedBy": {
           "displayName": "John Developer",
           "uniqueName": "john.developer@company.com"
@@ -26,9 +26,9 @@
       "fields": {
         "System.Id": 99902,
         "System.WorkItemType": "User Story",
-        "System.Title": "Moderate quality user story",
-        "System.Description": "<div>As a user, I want to reset my password so that I can regain access to my account if I forget my credentials.</div>",
-        "Microsoft.VSTS.Common.AcceptanceCriteria": "<div><ul><li>User can request password reset via email</li><li>Reset link expires after 24 hours</li><li>User receives confirmation after successful reset</li></ul></div>",
+        "System.Title": "As a user I want to reset my password when I forget it",
+        "System.Description": "<div>As a user, I want to reset my password so that I can regain access to my account if I forget my credentials. The system should send me an email with a secure reset link that expires after 24 hours. When I click the link, I will be taken to a page where I can enter a new password.</div>",
+        "Microsoft.VSTS.Common.AcceptanceCriteria": "<div><ul><li>Given a registered user, when they click 'Forgot Password', then they can enter their email address</li><li>Verify that user receives a password reset email within 2 minutes</li><li>Confirm that reset link expires after 24 hours</li><li>Test that user receives confirmation after successful password reset</li><li>Check that invalid email addresses display appropriate error message</li></ul></div>",
         "System.CreatedBy": {
           "displayName": "Jane Analyst",
           "uniqueName": "jane.analyst@company.com"
@@ -62,7 +62,7 @@
       "fields": {
         "System.Id": 99904,
         "System.WorkItemType": "User Story",
-        "System.Title": "Missing acceptance criteria",
+        "System.Title": "Missing acceptance criteria user story",
         "System.Description": "<div>This user story has a reasonable description explaining what needs to be built and why it matters to the user. It includes context about the business need and technical approach.</div>",
         "Microsoft.VSTS.Common.AcceptanceCriteria": "",
         "System.CreatedBy": {
@@ -117,32 +117,32 @@
     "99901": {
       "grade": "A",
       "scoreRange": "75-100",
-      "notes": "Complete documentation with rich description and detailed acceptance criteria"
+      "notes": "Comprehensive description and AC with all quality indicators present"
     },
     "99902": {
-      "grade": "B",
-      "scoreRange": "55-74",
-      "notes": "Good user story format but could use more detail"
+      "grade": "A",
+      "scoreRange": "75-100",
+      "notes": "Well-structured user story with clear Given/When/Then AC"
     },
     "99903": {
       "grade": "F",
       "scoreRange": "0-19",
-      "notes": "Missing description caps at D, minimal AC content"
+      "notes": "Missing description - capped at D, minimal AC content"
     },
     "99904": {
-      "grade": "F",
-      "scoreRange": "0-19",
-      "notes": "Missing acceptance criteria caps at D"
+      "grade": "D",
+      "scoreRange": "20-34",
+      "notes": "Has description but missing AC - raw score only 24"
     },
     "99905": {
       "grade": "F",
       "scoreRange": "0-19",
-      "notes": "Both missing - worst possible score"
+      "notes": "Both missing - worst possible score of 0"
     },
     "99906": {
       "grade": "F",
       "scoreRange": "0-19",
-      "notes": "Extremely short content in all fields"
+      "notes": "Extremely short content - low raw score of 10"
     }
   },
 
