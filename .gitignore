@@ -1,0 +1,23 @@
+# Cache file (contains fetched ADO data)
+ado_workitems_cache.json
+
+# Generated reports / output
+*.csv
+*.xlsx
+*_summary_*.txt
+orphaned_tickets_*.json
+*.eml
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Temp files
+*_temp.json
+batch_*.json
+
+# Secrets / keys
+.env
+*.pem
+*.key
+*.pat

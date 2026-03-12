@@ -1,0 +1,367 @@
+{
+  "name": "ADO Ticket Quality Assessment",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 200]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "organization",
+              "value": "={{ $env.ADO_ORGANIZATION }}"
+            },
+            {
+              "name": "project",
+              "value": "={{ $env.ADO_PROJECT }}"
+            },
+            {
+              "name": "queryId1",
+              "value": "={{ $env.ADO_QUERY_FEATURES }}"
+            },
+            {
+              "name": "queryId2",
+              "value": "={{ $env.ADO_QUERY_USERSTORIES }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-variables",
+      "name": "Set Variables",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [220, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://dev.azure.com/{{ $json.organization }}/{{ $json.project }}/_apis/wit/wiql/{{ $json.queryId1 }}?api-version=7.0",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {}
+      },
+      "id": "fetch-query-1",
+      "name": "Fetch Features Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [440, 0],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "ado-pat",
+          "name": "ADO PAT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://dev.azure.com/{{ $('Set Variables').item.json.organization }}/{{ $('Set Variables').item.json.project }}/_apis/wit/wiql/{{ $('Set Variables').item.json.queryId2 }}?api-version=7.0",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {}
+      },
+      "id": "fetch-query-2",
+      "name": "Fetch User Stories Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [440, 200],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "ado-pat",
+          "name": "ADO PAT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": []
+        },
+        "options": {}
+      },
+      "id": "merge-queries",
+      "name": "Merge Query Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [660, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and deduplicate work item IDs from both queries\nconst allItems = [];\n\nfor (const item of $input.all()) {\n  if (item.json.workItems) {\n    for (const wi of item.json.workItems) {\n      allItems.push(wi.id);\n    }\n  }\n}\n\n// Deduplicate\nconst uniqueIds = [...new Set(allItems)];\n\n// Create batches of 200\nconst batchSize = 200;\nconst batches = [];\n\nfor (let i = 0; i < uniqueIds.length; i += batchSize) {\n  batches.push({\n    json: {\n      ids: uniqueIds.slice(i, i + batchSize),\n      batchNumber: Math.floor(i / batchSize) + 1,\n      totalBatches: Math.ceil(uniqueIds.length / batchSize),\n      organization: $('Set Variables').first().json.organization,\n      project: $('Set Variables').first().json.project\n    }\n  });\n}\n\nconsole.log(`Total IDs: ${uniqueIds.length}, Batches: ${batches.length}`);\n\nreturn batches;"
+      },
+      "id": "create-batches",
+      "name": "Create Batches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://dev.azure.com/{{ $json.organization }}/{{ $json.project }}/_apis/wit/workitemsbatch?api-version=7.0",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"ids\": {{ JSON.stringify($json.ids) }},\n  \"fields\": [\n    \"System.Id\",\n    \"System.WorkItemType\",\n    \"System.Title\",\n    \"System.Description\",\n    \"Microsoft.VSTS.Common.AcceptanceCriteria\",\n    \"System.CreatedBy\",\n    \"System.State\",\n    \"System.AreaPath\",\n    \"Microsoft.VSTS.Scheduling.StartDate\",\n    \"Microsoft.VSTS.Scheduling.TargetDate\"\n  ]\n}",
+        "options": {}
+      },
+      "id": "fetch-workitems",
+      "name": "Fetch Work Items Batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1100, 100],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "ado-pat",
+          "name": "ADO PAT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flatten all work items from all batches\nconst allWorkItems = [];\n\nfor (const batch of $input.all()) {\n  if (batch.json.value) {\n    for (const item of batch.json.value) {\n      allWorkItems.push({ json: item });\n    }\n  }\n}\n\nconsole.log(`Total work items fetched: ${allWorkItems.length}`);\n\nreturn allWorkItems;"
+      },
+      "id": "flatten-results",
+      "name": "Flatten Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Quality Assessment Algorithm\nfunction stripHtml(html) {\n  if (!html) return '';\n  return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '\"').replace(/\\s+/g, ' ').trim();\n}\n\nfunction extractName(createdBy) {\n  if (!createdBy) return '(Unknown)';\n  if (typeof createdBy === 'string') {\n    return createdBy.split('<')[0].trim();\n  }\n  return createdBy.displayName || '(Unknown)';\n}\n\nfunction assessTicket(item) {\n  const fields = item.fields || {};\n  const title = fields['System.Title'] || '';\n  const description = stripHtml(fields['System.Description'] || '');\n  const ac = stripHtml(fields['Microsoft.VSTS.Common.AcceptanceCriteria'] || '');\n  const startDate = fields['Microsoft.VSTS.Scheduling.StartDate'];\n  const targetDate = fields['Microsoft.VSTS.Scheduling.TargetDate'];\n\n  let score = 0;\n  let rationale = [];\n\n  // === QUANTITATIVE SCORING (25 points) ===\n  const descWords = description.split(/\\s+/).filter(w => w.length > 0).length;\n  const acWords = ac.split(/\\s+/).filter(w => w.length > 0).length;\n\n  // Description Substance (12 points)\n  if (descWords >= 50) score += 12;\n  else if (descWords >= 30) score += 9;\n  else if (descWords >= 15) score += 6;\n  else if (descWords >= 5) score += 3;\n\n  // AC Substance (13 points)\n  if (acWords >= 50) score += 13;\n  else if (acWords >= 30) score += 10;\n  else if (acWords >= 15) score += 7;\n  else if (acWords >= 5) score += 4;\n\n  // === QUALITATIVE SCORING (75 points) ===\n  const combinedText = (title + ' ' + description + ' ' + ac).toLowerCase();\n\n  // WHAT - Actions Defined (15 points)\n  const actionMatches = (combinedText.match(/\\b(shall|must|will|should|can|allow|enable|provide|display|show|create|update|delete|send|receive|process|validate|calculate)\\b/gi) || []).length;\n  if (actionMatches >= 5) score += 15;\n  else if (actionMatches >= 3) score += 10;\n  else if (actionMatches >= 1) score += 5;\n\n  // WHO - Actor Identified (10 points)\n  const actorMatches = (combinedText.match(/\\b(user|admin|administrator|system|customer|inspector|manager|operator|technician|as a)\\b/gi) || []).length;\n  if (actorMatches >= 2) score += 10;\n  else if (actorMatches >= 1) score += 5;\n\n  // WHY - Business Context (10 points)\n  const whyMatches = (combinedText.match(/\\b(so that|in order to|because|to enable|to allow|to ensure|to support|requirement|compliance|business)\\b/gi) || []).length;\n  if (whyMatches >= 2) score += 10;\n  else if (whyMatches >= 1) score += 5;\n\n  // HOW - Implementation Clarity (20 points)\n  const howMatches = (combinedText.match(/\\b(when|if|then|click|select|enter|navigate|button|field|screen|page|form|api|endpoint|database|table)\\b/gi) || []).length;\n  if (howMatches >= 8) score += 20;\n  else if (howMatches >= 5) score += 15;\n  else if (howMatches >= 3) score += 10;\n  else if (howMatches >= 1) score += 5;\n\n  // DONE - Testable Criteria (15 points)\n  const doneMatches = (combinedText.match(/\\b(verify|confirm|check|test|ensure|validate|expected|result|outcome|success|fail|error|given|when|then)\\b/gi) || []).length;\n  if (doneMatches >= 5) score += 15;\n  else if (doneMatches >= 3) score += 10;\n  else if (doneMatches >= 1) score += 5;\n\n  // EDGE - Exception Handling (5 points)\n  const edgeMatches = (combinedText.match(/\\b(error|exception|invalid|fail|edge case|boundary|limit|maximum|minimum|timeout|retry)\\b/gi) || []).length;\n  if (edgeMatches >= 2) score += 5;\n  else if (edgeMatches >= 1) score += 3;\n\n  // === CRITICAL CAPS ===\n  let maxGrade = 'A';\n\n  if (acWords < 15) {\n    maxGrade = 'C';\n    rationale.push('AC too short');\n  }\n\n  if (descWords < 10) {\n    maxGrade = maxGrade === 'C' ? 'F' : 'D';\n    rationale.push('Description too short');\n  }\n\n  if (descWords === 0 && acWords === 0) {\n    maxGrade = 'F';\n    score = 0;\n    rationale.push('No Description or AC');\n  }\n\n  // === DETERMINE GRADE ===\n  let grade;\n  if (score >= 75) grade = 'A';\n  else if (score >= 55) grade = 'B';\n  else if (score >= 35) grade = 'C';\n  else if (score >= 20) grade = 'D';\n  else grade = 'F';\n\n  // Apply cap\n  const gradeOrder = ['F', 'D', 'C', 'B', 'A'];\n  if (gradeOrder.indexOf(grade) > gradeOrder.indexOf(maxGrade)) {\n    grade = maxGrade;\n    rationale.push('Capped at ' + maxGrade);\n  }\n\n  // === PRELIM TAGGING ===\n  let isPrelim = false;\n  if (startDate) {\n    const start = new Date(startDate);\n    const now = new Date();\n    const daysUntilStart = (start - now) / (1000 * 60 * 60 * 24);\n    if (daysUntilStart > 7) {\n      isPrelim = true;\n      grade = 'Prelim: ' + grade;\n    }\n  }\n\n  return {\n    id: item.id,\n    workItemType: fields['System.WorkItemType'],\n    title: title,\n    state: fields['System.State'],\n    createdBy: extractName(fields['System.CreatedBy']),\n    areaPath: fields['System.AreaPath'],\n    startDate: startDate ? startDate.split('T')[0] : '',\n    targetDate: targetDate ? targetDate.split('T')[0] : '',\n    grade: grade,\n    score: score,\n    rationale: rationale.join('; ') || 'Standard scoring',\n    isPrelim: isPrelim,\n    descWords: descWords,\n    acWords: acWords\n  };\n}\n\n// Process all items\nconst results = [];\nfor (const item of $input.all()) {\n  results.push({ json: assessTicket(item.json) });\n}\n\nreturn results;"
+      },
+      "id": "assess-quality",
+      "name": "Assess Quality",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all().map(i => i.json);\n\n// Grade distribution\nconst grades = { A: 0, B: 0, C: 0, D: 0, F: 0 };\nconst byCreator = {};\nlet prelimCount = 0;\nlet imminentCount = 0;\nconst fGradeImminent = [];\nconst dGradeImminent = [];\n\nfor (const item of items) {\n  const baseGrade = item.grade.replace('Prelim: ', '');\n  grades[baseGrade]++;\n\n  if (item.isPrelim) prelimCount++;\n  else imminentCount++;\n\n  if (!item.isPrelim && baseGrade === 'F') fGradeImminent.push(item);\n  if (!item.isPrelim && baseGrade === 'D') dGradeImminent.push(item);\n\n  const creator = item.createdBy;\n  if (!byCreator[creator]) {\n    byCreator[creator] = { F: [], D: [], C: [], B: [], A: [] };\n  }\n  byCreator[creator][baseGrade].push(item.id);\n}\n\n// Calculate percentages\nconst total = items.length;\nconst pct = (n) => total > 0 ? ((n / total) * 100).toFixed(1) : '0.0';\n\nreturn [{\n  json: {\n    totalTickets: total,\n    grades: grades,\n    gradePercentages: {\n      A: pct(grades.A),\n      B: pct(grades.B),\n      C: pct(grades.C),\n      D: pct(grades.D),\n      F: pct(grades.F)\n    },\n    prelimCount: prelimCount,\n    imminentCount: imminentCount,\n    fGradeImminentCount: fGradeImminent.length,\n    dGradeImminentCount: dGradeImminent.length,\n    fGradeImminentTop10: fGradeImminent.slice(0, 10).map(i => ({ id: i.id, title: i.title.substring(0, 50) })),\n    dGradeImminentTop10: dGradeImminent.slice(0, 10).map(i => ({ id: i.id, title: i.title.substring(0, 50) })),\n    byCreator: byCreator,\n    generatedAt: new Date().toISOString(),\n    assessedItems: items\n  }\n}];"
+      },
+      "id": "generate-summary",
+      "name": "Generate Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const summary = $input.first().json;\nconst items = summary.assessedItems;\n\n// CSV Header\nconst headers = ['ID', 'Work Item Type', 'Title', 'State', 'Created By', 'Area Path', 'Start Date', 'Target Date', 'Grade', 'Score', 'Rationale'];\n\n// CSV Rows\nconst rows = items.map(item => [\n  item.id,\n  item.workItemType || '',\n  '\"' + (item.title || '').replace(/\"/g, '\"\"') + '\"',\n  item.state || '',\n  item.createdBy || '',\n  '\"' + (item.areaPath || '').replace(/\"/g, '\"\"') + '\"',\n  item.startDate || '',\n  item.targetDate || '',\n  item.grade || '',\n  item.score || 0,\n  '\"' + (item.rationale || '').replace(/\"/g, '\"\"') + '\"'\n]);\n\nconst csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\\n');\n\nconst today = new Date().toISOString().split('T')[0].replace(/-/g, '');\n\nreturn [{\n  json: {\n    csv: csv,\n    filename: `ticket_quality_report_${today}.csv`,\n    summary: summary\n  },\n  binary: {\n    data: {\n      data: Buffer.from(csv).toString('base64'),\n      mimeType: 'text/csv',\n      fileName: `ticket_quality_report_${today}.csv`\n    }\n  }\n}];"
+      },
+      "id": "generate-csv",
+      "name": "Generate CSV",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst summary = data.summary;\n\nconst emailBody = `\nADO TICKET QUALITY REPORT\n========================\nGenerated: ${new Date().toLocaleString()}\n\nGRADE DISTRIBUTION\n------------------\nA: ${summary.grades.A} (${summary.gradePercentages.A}%)\nB: ${summary.grades.B} (${summary.gradePercentages.B}%)\nC: ${summary.grades.C} (${summary.gradePercentages.C}%)\nD: ${summary.grades.D} (${summary.gradePercentages.D}%)\nF: ${summary.grades.F} (${summary.gradePercentages.F}%)\n\nTotal: ${summary.totalTickets} tickets\nPrelim (>7 days): ${summary.prelimCount}\nImminent (<=7 days): ${summary.imminentCount}\n\nRISK ASSESSMENT\n---------------\nF-grade imminent (IMMEDIATE RISK): ${summary.fGradeImminentCount}\nD-grade imminent (HIGH RISK): ${summary.dGradeImminentCount}\n\nTOP F-GRADE IMMINENT:\n${summary.fGradeImminentTop10.map(i => '  - ' + i.id + ': ' + i.title + '...').join('\\n')}\n\nSee attached CSV for full details.\n`;\n\nreturn [{\n  json: {\n    emailSubject: `ADO Ticket Quality Report - ${summary.grades.F} F-grades (${summary.gradePercentages.F}%)`,\n    emailBody: emailBody,\n    filename: data.filename\n  },\n  binary: data.binary ? { data: $input.first().binary.data } : undefined\n}];"
+      },
+      "id": "format-email",
+      "name": "Format Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst summary = data.summary;\n\n// Slack Block Kit format\nconst blocks = [\n  {\n    type: 'header',\n    text: {\n      type: 'plain_text',\n      text: 'ADO Ticket Quality Report',\n      emoji: true\n    }\n  },\n  {\n    type: 'section',\n    fields: [\n      {\n        type: 'mrkdwn',\n        text: `*Total Tickets:*\\n${summary.totalTickets}`\n      },\n      {\n        type: 'mrkdwn',\n        text: `*F-Grade Imminent:*\\n${summary.fGradeImminentCount}`\n      }\n    ]\n  },\n  {\n    type: 'section',\n    text: {\n      type: 'mrkdwn',\n      text: `*Grade Distribution:*\\nA: ${summary.gradePercentages.A}% | B: ${summary.gradePercentages.B}% | C: ${summary.gradePercentages.C}% | D: ${summary.gradePercentages.D}% | F: ${summary.gradePercentages.F}%`\n    }\n  },\n  {\n    type: 'divider'\n  },\n  {\n    type: 'section',\n    text: {\n      type: 'mrkdwn',\n      text: `*Risk Summary:*\\n:red_circle: F-grade imminent: ${summary.fGradeImminentCount}\\n:large_orange_circle: D-grade imminent: ${summary.dGradeImminentCount}`\n    }\n  },\n  {\n    type: 'context',\n    elements: [\n      {\n        type: 'mrkdwn',\n        text: `Generated: ${new Date().toLocaleString()}`\n      }\n    ]\n  }\n];\n\nreturn [{\n  json: {\n    blocks: blocks,\n    text: `ADO Ticket Quality Report: ${summary.grades.F} F-grades (${summary.fGradeImminentCount} imminent)`\n  }\n}];"
+      },
+      "id": "format-slack",
+      "name": "Format Slack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 200]
+    }
+  ],
+  "connections": {
+    "Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "Set Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Variables": {
+      "main": [
+        [
+          {
+            "node": "Fetch Features Query",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch User Stories Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Features Query": {
+      "main": [
+        [
+          {
+            "node": "Merge Query Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch User Stories Query": {
+      "main": [
+        [
+          {
+            "node": "Merge Query Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Query Results": {
+      "main": [
+        [
+          {
+            "node": "Create Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Batches": {
+      "main": [
+        [
+          {
+            "node": "Fetch Work Items Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Work Items Batch": {
+      "main": [
+        [
+          {
+            "node": "Flatten Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten Results": {
+      "main": [
+        [
+          {
+            "node": "Assess Quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assess Quality": {
+      "main": [
+        [
+          {
+            "node": "Generate Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Summary": {
+      "main": [
+        [
+          {
+            "node": "Generate CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate CSV": {
+      "main": [
+        [
+          {
+            "node": "Format Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Format Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ADO",
+      "id": "1"
+    },
+    {
+      "name": "Quality",
+      "id": "2"
+    }
+  ],
+  "triggerCount": 2,
+  "pinData": {}
+}
